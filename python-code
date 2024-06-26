@@ -1,0 +1,50 @@
+import openpyxl
+import requests
+
+# Load the Excel file
+file_path = r"YOUR_EXCEL_FILE_PATH"
+wb = openpyxl.load_workbook(file_path)
+ws = wb.active
+
+# Google Search Console API details
+api_key = 'YOUR_API_KEY'
+search_engine_id = 'YOUR_CX_SEARCH_ENGINE_CODE'
+
+# Function to perform a Google search
+def google_search(query):
+    url = f"https://www.googleapis.com/customsearch/v1?key={api_key}&cx={search_engine_id}&q={query}"
+    response = requests.get(url)
+    return response.json()
+
+# Iterate through the rows in the Excel file, skipping the header
+for row in ws.iter_rows(min_row=2, values_only=False):
+    title = row[0].value
+    author = row[1].value
+    query = f"{title} {author} site:amazon.com"
+    
+    # Perform the search
+    search_results = google_search(query)
+    
+    # Find the Amazon URL
+    amazon_url = ""
+    for item in search_results.get("items", []):
+        link = item.get("link", "")
+        if "amazon.com" in link:
+            amazon_url = link
+            break
+    
+    # Modify the URL to include the affiliate tag
+    if amazon_url:
+        dp_index = amazon_url.find("/dp/")
+        if dp_index != -1:
+            product_id_end = amazon_url.find("/", dp_index + 4)
+            if product_id_end == -1:
+                product_id_end = len(amazon_url)
+            amazon_url = amazon_url[:product_id_end] + "YOUR_AFFILIATE_TAG_WITH_/_IN_FRONT"
+    
+    # Write the modified URL back to the Excel file
+    row[2].value = amazon_url
+
+# Save the modified Excel file
+wb.save(file_path)
+print("Excel file updated successfully.")
